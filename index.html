@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>營隊隊輔生存戰：五人小隊的策略取捨</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        camp: {
+                            bg: '#FAF7F0',
+                            card: '#FFFDF9',
+                            green: '#2E6F40',
+                            lightgreen: '#E8F5E9',
+                            orange: '#E87A5D',
+                            yellow: '#F4B41A',
+                            brown: '#4A3E3D',
+                            sand: '#F0EABE'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FAF7F0;
+            color: #4A3E3D;
+            font-family: 'Noto Sans TC', sans-serif;
+            background-image: radial-gradient(#E5DDC8 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .wood-border {
+            border: 4px solid #4A3E3D;
+            box-shadow: 4px 4px 0px #4A3E3D;
+        }
+        .card-shadow {
+            box-shadow: 0 8px 20px -4px rgba(74, 62, 61, 0.12), 0 4px 6px -2px rgba(74, 62, 61, 0.05);
+        }
+        .bar-transition {
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F0EABE;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2E6F40;
+            border-radius: 4px;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-camp-orange selection:text-white pb-6">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-camp-green text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl animate-float">⛺</span>
+                <h1 class="font-bold text-lg md:text-xl tracking-wide">營隊隊輔生存戰 <span class="text-xs font-normal bg-camp-orange text-white px-2 py-0.5 rounded-full ml-1 hidden sm:inline-block">五人小隊策略取捨</span></h1>
+            </div>
+            <button onclick="toggleRuleModal()" class="text-xs sm:text-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg backdrop-blur transition flex items-center gap-1 font-medium">
+                <i class="fa-solid font-bold fa-circle-info"></i> 心態守則與規則
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl w-full mx-auto px-3 sm:px-4 py-4 flex-grow">
+
+        <!-- Member Status Bar (Visible in Game screens) -->
+        <div id="status-dashboard" class="hidden mb-6 bg-camp-card rounded-2xl p-3 sm:p-4 card-shadow border border-amber-900/10">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-amber-900/10">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-[#2E6F40] fa-user-astronaut text-camp-orange"></i>
+                    <span class="font-bold text-sm sm:text-base text-camp-brown">太空人即時心態</span>
+                    <span class="text-xs text-gray-500">(點擊頭像可看詳細特質與需求)</span>
+                </div>
+                <!-- Team Cohesion Score -->
+                <div class="flex items-center gap-2 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                    <span class="text-xs font-bold text-amber-800">🔥 團隊向心力:</span>
+                    <span id="cohesion-val" class="font-black text-sm text-camp-orange">60</span>
+                </div>
+            </div>
+
+            <!-- Student Grid Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+                <!-- Dynamically Rendered via JS -->
+            </div>
+        </div>
+
+        <!-- Dynamic Game Content Screen -->
+        <div id="screen-container">
+            <!-- Content injects here via JS -->
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-amber-900/60 mt-8 py-2">
+        營隊隊輔生存戰 &copy; 2026 隊輔心態建立與策略模擬教學系統 | Designed for Camp Leaders
+    </footer>
+
+    <!-- Student Detail Modal -->
+    <div id="student-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-camp-card rounded-2xl max-w-md w-full p-6 card-shadow border-2 border-camp-brown relative animate-fade-in">
+            <button onclick="closeStudentModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="student-modal-body">
+                <!-- Content inserted via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Explanation Modal -->
+    <div id="rule-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-camp-card rounded-2xl max-w-xl w-full p-6 card-shadow border-2 border-camp-green relative max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleRuleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-camp-green mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-book-open"></i> 隊輔 8 大核心心態與計分機制
+            </h3>
+            
+            <div class="space-y-4 text-sm text-gray-700 leading-relaxed">
+                <!-- Mindsets Card -->
+                <div class="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200">
+                    <p class="font-bold text-emerald-900 mb-2 text-xs uppercase tracking-wide">🧠 《隊輔心態建立》8 大核心觀念：</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>1. 角色定位</b>：你是陪伴者而非救世主。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>2. 期待管理</b>：營隊是種子，不是奇蹟。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>3. 偏鄉敏感</b>：避免憐憫、標籤與比較。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>4. 行為需求</b>：行為背後必定有需求。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>5. 溫柔堅定</b>：語氣溫柔、界線堅定。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>6. 團隊一致</b>：夥伴對齊、不扮黑白臉。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>7. 承諾界線</b>：不私聯、不給空頭承諾。</div>
+                        <div class="bg-white p-2 rounded border border-emerald-100"><b>8. 照顧自己</b>：會累很正常，懂得求助。</div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                    <p class="font-bold text-camp-brown mb-1">⚖️ 策略取捨機制（有捨有得）：</p>
+                    <p class="text-xs text-amber-900">遊戲中沒有「全正分無缺點」的標準答案！每個選擇都有其核心優勢，但同時也會帶來某位學員或層面的代價，考驗你在有限資源下的動態平衡能力。</p>
+                </div>
+
+                <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                    <p class="font-bold text-blue-900 mb-1">🏆 最終結算機制 (木桶理論)：</p>
+                    <ul class="text-xs text-blue-800 list-disc list-inside space-y-1">
+                        <li><b>五位學員平均分 (50%)</b>：團隊整體的滿意與適應程度。</li>
+                        <li><b>最低分學員保障分 (30%)</b>：考驗你是否放生了某位陷入困境的學員。</li>
+                        <li><b>團隊向心力 (20%)</b>：小隊整體氛圍與秩序展現。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-5 text-right">
+                <button onclick="toggleRuleModal()" class="bg-camp-green text-white font-bold px-5 py-2 rounded-xl text-sm hover:bg-emerald-800 transition">
+                    理解心態，準備好帶隊了！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME LOGIC SCRIPT -->
+    <script>
+        // ==================== DATA DEFINITIONS ====================
+        const initialStudents = [
+            {
+                id: 'xiaoyu',
+                name: 'jellyfish',
+                tag: '敏感內向',
+                avatar: '🥺',
+                color: 'blue',
+                score: 60,
+                desc: '對環境變化與吵鬧極度敏感，害怕成為焦點，需要安全感與預告。',
+                need: '環境穩定度與個人安靜空間',
+                mine: '突如其來的尖叫吵鬧、在眾人面前被逼迫發言。'
+            },
+            {
+                id: 'ajie',
+                name: '威宇',
+                tag: '精力過剩',
+                avatar: '⚡',
+                color: 'orange',
+                score: 60,
+                desc: '點子多、體力無上限，試探界線是在尋求關注，需要具體舞台與任務。',
+                need: '舞台與肢體活動量發洩',
+                mine: '被長時間強迫安靜坐著、被冷落忽視。'
+            },
+            {
+                id: 'xiaoqing',
+                name: 'binbong',
+                tag: '完美主義',
+                avatar: '📏',
+                color: 'purple',
+                score: 60,
+                desc: '極度看重規則與公平性，無法接受模稜兩可或裁判雙標，追求完美。',
+                need: '明確標準、公平性與規則一致',
+                mine: '雙重標準、規則混亂、有人鑽漏洞未被處理。'
+            },
+            {
+                id: 'dabao',
+                name: '瓜哥',
+                tag: '慢熱觀察',
+                avatar: '🐢',
+                color: 'emerald',
+                score: 60,
+                desc: '習慣退在身後觀察，自信心較脆弱，怕被比較，需要溫和肯定的陪伴。',
+                need: '無壓力的陪伴與自尊保護',
+                mine: '被當眾拿來比較、同情憐憫的眼神或語氣。'
+            },
+            {
+                id: 'meimei',
+                name: '米粒',
+                tag: '點子社交',
+                avatar: '👑',
+                color: 'pink',
+                score: 60,
+                desc: '表達慾強、愛主導氣氛與話題，喜歡被聽見與認同，需要被賦權合作。',
+                need: '表達慾被滿足與社交主導感',
+                mine: '想法被直接打斷否定、被當作空氣。'
+            }
+        ];
+
+        const gameEvents = [
+            {
+                round: 1,
+                time: 'Day 1 上午',
+                title: '破冰與規矩的建立',
+                mindsetTag: '',
+                bg: 'bg-emerald-50',
+                desc: '剛開始破冰與講解小隊規則時，太空人們還沒完全定下心來。威宇不停搶答、甚至故意把隊輔的規則卡藏起來，看似在「調皮搗蛋」，其實是在試探隊輔的底線與態度；現場氣氛一時僵住。',
+                reactions: [
+                    { name: '威宇', emoji: '⚡', text: '笑嘻嘻地把規則卡藏在背後，眼神一直偷瞄隊輔會不會生氣。' },
+                    { name: 'binbong', emoji: '📏', text: '眉頭緊鎖，大聲指責威宇破壞規矩，要求隊輔立刻處理。' },
+                    { name: 'jellyfish', emoji: '🥺', text: '因為大家聲音變大而縮起肩膀，顯得相當緊張。' }
+                ],
+                options: [
+                    {
+                        tag: '【先理解背後需求】',
+                        title: '蹲下來先問威宇是不是坐太久想幫忙，接住他想被關注的需求後再慢慢帶回規則。',
+                        text: '不貼標籤罵人，先安撫威宇的需求，再柔性化解緊張對立。',
+                        effects: { xiaoyu: 5, ajie: 15, xiaoqing: -10, dabao: 10, meimei: -5, cohesion: 5 },
+                        story: '威宇感受到你沒有立刻貼標籤罵人，開心地交回卡片；瓜哥也覺得隊輔很溫柔。但 binbong 覺得對違規太寬容、標準不公，米粒也覺得拖延了時間。',
+                        note: '落實「行為背後必定有需求，先理解再處理」，成功拉住威宇與慢熱學員，但代價是規則建立變慢，讓重視規範的 binbong 感到不安。'
+                    },
+                    {
+                        tag: '【溫柔堅定守界線】',
+                        title: '不情緒化、不羞辱，語氣平穩而堅定地重申事先講好的規則，請威宇交回卡片並暫停搶答一輪。',
+                        text: '平穩而堅定地重申規則，守住界線與團隊秩序。',
+                        effects: { xiaoyu: 10, ajie: -10, xiaoqing: 15, dabao: -5, meimei: -5, cohesion: 15 },
+                        story: '清楚一致的界線讓 binbong 極度安心，環境迅速恢復秩序也讓 jellyfish 放鬆下來；但威宇一時沒台階下悶悶不樂，米粒覺得氣氛變得有點嚴肅。',
+                        note: '落實「溫柔堅定、不能失去界線」，守住照顧者角色與團隊秩序，但短期內必須承擔活潑學員的挫折感，需要後續再找機會給他舞台。'
+                    },
+                    {
+                        tag: '【轉化焦點給任務】',
+                        title: '不正面衝突，順勢把威宇的舉動轉化成「規則示範小幫手」，請他和米粒一起演給大家看。',
+                        text: '轉化過剩精力為表演示範，藉機帶動全隊氣氛。',
+                        effects: { xiaoyu: -10, ajie: 15, xiaoqing: -10, dabao: 5, meimei: 15, cohesion: 5 },
+                        story: '威宇和米粒超投入地把氣氛炒熱，連瓜哥都忍不住偷笑！但 binbong 覺得「搗蛋反而有獎勵」極度不公平，突然熱鬧的場面也讓 jellyfish 感到壓力。',
+                        note: '巧妙轉化過剩精力並滿足表達慾，氣氛活絡，但模糊了規則底線，讓重視公平的 binbong 與怕突變的 jellyfish 付出代價。'
+                    }
+                ]
+            },
+            {
+                round: 2,
+                time: 'Day 1 下午',
+                title: '手作課的意外比較',
+                mindsetTag: '偏鄉敏感 × 角色定位',
+                bg: 'bg-amber-50',
+                desc: '創意手作課主題是「夢想中的旅行」。討論時，米粒興奮地分享電視上看過的出國行程，無意間聊起彼此家裡的資源差距；現場氣氛瞬間微妙起來。',
+                reactions: [
+                    { name: '瓜哥', emoji: '🐢', text: '默默把自己的作品蓋起來，小聲說「我們這裡本來就沒有那些東西」。' },
+                    { name: '米粒', emoji: '👑', text: '沒發現氣氛不對，還熱絡地想主導大家一起做「出國搭飛機」主題。' },
+                    { name: 'binbong', emoji: '📏', text: '看著簡陋的現有材料，煩躁地覺得根本做不出範本的精緻度。' }
+                ],
+                options: [
+                    {
+                        tag: '【去比較、肯定在地經驗】',
+                        title: '溫柔中斷比較，絕不流露憐憫，將主題自然轉回學員熟悉的生活經驗，邀請瓜哥分享在地最酷的秘密基地。',
+                        text: '不流露憐憫，將關注點導向在地生活經驗與專屬價值。',
+                        effects: { xiaoyu: 10, ajie: -5, xiaoqing: -5, dabao: 15, meimei: -10, cohesion: 10 },
+                        story: '瓜哥感受到被平等尊重，眼睛一亮開始介紹家鄉秘境，jellyfish 也在溫和氛圍中安心創作。但米粒覺得話題被打斷有點失落，binbong 仍困擾於沒有標準範本。',
+                        note: '落實「偏鄉敏感：避免憐憫、標籤與比較，服務不是施捨」，成功保護瓜哥的自尊，但必須承受打斷米粒表達慾與偏離原訂範本的取捨。'
+                    },
+                    {
+                        tag: '【專注當下創作與陪伴】',
+                        title: '不刻意放大話題說教，以「陪伴者」角色坐下來一起動手做，專心肯定 binbong 的細節巧思與米粒的創意。',
+                        text: '不做居高臨下的道德說教，專注於手作當下的陪伴與鼓勵。',
+                        effects: { xiaoyu: -5, ajie: 5, xiaoqing: 15, dabao: -10, meimei: 10, cohesion: 5 },
+                        story: '你不當人生導師、單純專心陪伴創作，讓 binbong 找回成就感、米粒與威宇也開心投入；但瓜哥心裡那句失落的話沒有被接住，依舊默默低著頭。',
+                        note: '落實「角色定位：你是陪伴者而非救世主」，避免了居高臨下的說教，但選擇冷處理敏感言論的代價，是錯失了第一時間安撫瓜哥的機會。'
+                    },
+                    {
+                        tag: '【開放對話打破刻板印象】',
+                        title: '趁機引導大家聊聊「不同地方有不同的好玩」，邀請大家互相聽聽彼此的看法，練習尊重差異。',
+                        text: '開啟全隊開放討論，引導孩子理解不同背景與文化優點。',
+                        effects: { xiaoyu: -10, ajie: 10, xiaoqing: 10, dabao: -10, meimei: 10, cohesion: 10 },
+                        story: '米粒、威宇和 binbong 聊得很起勁，大家對彼此的生活有了新理解，團隊更有共識；但瓜哥覺得被聚焦談背景很尷尬，jellyfish 也對輪流發言感到壓力。',
+                        note: '正面引導多元觀點能提升整體認知與向心力，但在公開場合討論敏感議題，往往會讓慢熱與高敏學員感到赤裸與不自在。'
+                    }
+                ]
+            },
+            {
+                round: 3,
+                time: 'Day 1 晚上',
+                title: '搭檔發火的默契考驗',
+                mindsetTag: '團隊一致 × 溫柔堅定',
+                bg: 'bg-purple-50',
+                desc: '晚會排練前，威宇和米粒一直打鬧不肯站定位。跟你同小隊的搭檔隊輔忍不住拉下臉大聲喝斥，轉頭眼神示意你去當「白臉」安撫，現場瞬間陷入低氣壓。',
+                reactions: [
+                    { name: 'jellyfish', emoji: '🥺', text: '被突然的高分貝嚇到，緊捏著衣角不敢動。' },
+                    { name: 'binbong', emoji: '📏', text: '一臉困惑地看著兩位隊輔，不知道現在到底該聽誰的指令。' },
+                    { name: '威宇', emoji: '⚡', text: '被兇完後嘟著嘴踢地板，故意把頭轉向另一邊。' }
+                ],
+                options: [
+                    {
+                        tag: '【先補位對齊，統一規則】',
+                        title: '不刻意扮白臉，先請搭檔深呼吸休息，兩人快速對齊後，用一致的語氣向大家說明「規則標準兩位隊輔是一樣的」。',
+                        text: '拒絕扮白臉黑臉，與夥伴保持立場一致並重申共同規則。',
+                        effects: { xiaoyu: 10, ajie: -10, xiaoqing: 15, dabao: -5, meimei: -5, cohesion: 15 },
+                        story: '兩位隊輔展現高度一致，binbong 鬆了口氣，jellyfish 也在情緒降溫後穩定下來；但威宇和米粒覺得「兩個人都在管我」，排練士氣暫時偏低。',
+                        note: '落實「團隊一致：補位、交接、統一規則，不扮白臉黑臉」，避免讓學員無所適從，但短期內必須承擔活潑組覺得嚴格的代價。'
+                    },
+                    {
+                        tag: '【立刻接手分組，先降溫行動】',
+                        title: '主動幫搭檔補位接手，讓搭檔先退場喘口氣，自己立刻將大家分成「舞台組」與「幕後組」動起來，不重提剛剛的衝突。',
+                        text: '不糾結衝突，用明確的任務分流快速化解僵局。',
+                        effects: { xiaoyu: -5, ajie: 10, xiaoqing: -10, dabao: 10, meimei: 10, cohesion: -5 },
+                        story: '行動立刻化解了尷尬！威宇、米粒在舞台組重拾熱情，瓜哥在幕後組也很自在。但沒有對齊規則讓 binbong 覺得沒收尾，jellyfish 也仍擔心搭檔還在生氣。',
+                        note: '快速補位與任務分流能立刻救回現場氣氛與參與感，但略過與搭檔的一致性說明，會在團隊信任與規範清晰度上留下小缺口。'
+                    },
+                    {
+                        tag: '【留在現場緩頰，幫搭檔說話】',
+                        title: '先溫柔安撫被嚇到的孩子，輕聲解釋「搭檔只是很在意大家的表現」，邀請大家一起體諒並配合節奏。',
+                        text: '發揮親和力柔性緩和情緒，幫搭檔建立動機解釋。',
+                        effects: { xiaoyu: 10, ajie: -5, xiaoqing: -5, dabao: 10, meimei: -5, cohesion: 10 },
+                        story: 'jellyfish 和瓜哥獲得即時的溫柔安撫，情緒很快平復，隊伍也願意互相體諒；但這略帶「白臉」的安撫讓威宇覺得在說大道理，binbong 也覺得規則界線有點模糊。',
+                        note: '溫柔緩頰能即時接住高敏與慢熱學員的情緒，但若拿捏不好容易落入「黑白臉」分工，降低規則的執行力。'
+                    }
+                ]
+            },
+            {
+                round: 4,
+                time: 'Day 2 上午',
+                title: '加好友與「下次見」的請求',
+                mindsetTag: '承諾界線 × 期待管理',
+                bg: 'bg-blue-50',
+                desc: '相處來到第二天，孩子們對你產生滿滿的依賴！下課休息時，瓜哥鼓起勇氣悄悄拉住你，問能不能交換 IG 或 LINE、放假單獨帶他出去玩；其他人聽到也立刻圍上來起鬨！',
+                reactions: [
+                    { name: '瓜哥', emoji: '🐢', text: '好不容易敞開心扉，眼神滿懷期待地看著你。' },
+                    { name: '米粒', emoji: '👑', text: '馬上舉手喊「我也要加！隊輔你以後每個月都要回來看我們喔！」' },
+                    { name: 'binbong', emoji: '📏', text: '在旁邊安靜看著，留意隊輔會不會真的打破營隊規定。' }
+                ],
+                options: [
+                    {
+                        tag: '【清楚守住界線，誠實拒絕】',
+                        title: '溫柔但明確地拒絕交換聯絡方式與單獨出遊，誠實說明這是保護彼此的規定，不亂給做不到的承諾。',
+                        text: '態度溫柔但原則明確，守住個人私聯與出遊界線。',
+                        effects: { xiaoyu: 10, ajie: -5, xiaoqing: 15, dabao: -10, meimei: -5, cohesion: 15 },
+                        story: '你穩穩守住了專業界線！binbong 很佩服你的原則，jellyfish 也覺得界線清楚很有安全感。但剛鼓起勇氣的瓜哥明顯失落，米粒和威宇也覺得好可惜。',
+                        note: '落實「承諾界線：不私聯、不單獨帶離、做不到的事不要說」，守住了最關鍵的安全底線，但必須承受孩子當下失落的情緒成本。'
+                    },
+                    {
+                        tag: '【轉化成集體儀式，不給空頭支票】',
+                        title: '不直接冷硬拒絕，而是把想念轉化成「寫小隊時光信」與專屬暗號，約定「未來若再辦營隊，我們在營隊見」。',
+                        text: '用充滿情感的集體儀式承接依戀，不作私人承諾。',
+                        effects: { xiaoyu: -10, ajie: 5, xiaoqing: -10, dabao: 10, meimei: 15, cohesion: 5 },
+                        story: '米粒超愛這個點子，瓜哥也因為專屬暗號破涕為笑，威宇開心地設計起動作。但因為沒把「不私聯」說死，binbong 覺得回應太模糊，jellyfish 也擔心話題還會被反覆提起。',
+                        note: '用儀式感承接依戀感、避免脫口而出做不到的承諾，能有效保護孩子心情，但模糊的界線表達可能讓重視原則與預告感的孩子感到不安。'
+                    },
+                    {
+                        tag: '【提前聊離別，種下期待的種子】',
+                        title: '召集大家坐下來聊聊「營隊結束後各自的生活」，肯定這兩天大家玩得開心、被尊重，這份回憶本身就是最棒的種子。',
+                        text: '進行期待管理，引導孩子將營隊的美好化為日常成長力量。',
+                        effects: { xiaoyu: 15, ajie: -10, xiaoqing: 5, dabao: 10, meimei: -10, cohesion: 10 },
+                        story: '提前的離別預告讓 jellyfish 非常安心，瓜哥也慢慢理解陪伴的意義，團隊凝聚感很深；但威宇和米粒覺得「還沒結束就在感傷太無聊了」，一直想快點去玩。',
+                        note: '落實「期待管理：營隊是種子不是奇蹟」，讓內向組做好心理準備，但太早進入感性收尾會犧牲活潑組當下的遊玩興致。'
+                    }
+                ]
+            },
+            {
+                round: 5,
+                time: 'Day 2 下午',
+                title: '體力見底的結業關卡',
+                mindsetTag: '照顧自己 × 角色定位',
+                bg: 'bg-rose-50',
+                desc: '最後半天的結業闖關與收尾！你已經連續兩天睡眠不足、喉嚨沙啞，耐心與體力都快見底。偏偏這時候小隊所有需求同時湧上來，你感覺自己快要情緒過載了……',
+                reactions: [
+                    { name: '威宇', emoji: '⚡', text: '體力依然滿格，一直拉著你的手臂要你陪他衝刺最後一關。' },
+                    { name: 'binbong', emoji: '📏', text: '剛剛關卡出現小失誤，情緒崩潰地拉著你要你陪她重來一次。' },
+                    { name: 'jellyfish', emoji: '🥺', text: '敏銳地察覺你臉色疲憊，默默站遠一點不敢開口。' }
+                ],
+                options: [
+                    {
+                        tag: '【誠實求助，請夥伴補位喘息】',
+                        title: '承認「隊輔也是人」，不燃燒自己證明有愛心。請夥伴暫代 10 分鐘，自己先去喝水深呼吸、穩住情緒再回來陪伴結業。',
+                        text: '誠實面對疲乏，請求夥伴支援，換取高質量的短暫充電。',
+                        effects: { xiaoyu: 15, ajie: -10, xiaoqing: 10, dabao: 10, meimei: -10, cohesion: 10 },
+                        story: '短暫休息後你找回平穩的笑容！jellyfish 看到你沒勉強自己終於放心，binbong 也從你身上學到「累了可以求助」；但關鍵時刻離開 10 分鐘，讓威宇和米粒覺得有點小失落。',
+                        note: '落實「照顧自己：會累很正常，要懂得休息與求助」，穩住自己的狀態才能給出高品質陪伴，代價是短暫缺席讓高互動需求的學員感到可惜。'
+                    },
+                    {
+                        tag: '【坦白狀態，放手讓學員互助】',
+                        title: '放下「超人隊輔」的包袱，誠實告訴孩子你現在喉嚨痛、有點累，請威宇和米粒幫忙帶節奏，自己退到旁邊守住安全就好。',
+                        text: '退回觀察守護者角色，放權給孩子學習自主互助協作。',
+                        effects: { xiaoyu: -10, ajie: 15, xiaoqing: -10, dabao: -5, meimei: 15, cohesion: 15 },
+                        story: '威宇和米粒瞬間責任感爆棚，主動扛起帶動氣氛的任務，小隊展現驚人向心力！但少了隊輔細緻控場，binbong 覺得細節失控很焦慮，jellyfish 與瓜哥在混亂中顯得有些手足無措。',
+                        note: '落實「角色定位：守住安全、不必事事親力親為」，成功賦權活潑組並減輕自身負荷，但放手帶來的節奏混亂會考驗高敏與完美主義學員的承受度。'
+                    },
+                    {
+                        tag: '【咬牙硬撐，陪完最後一哩路】',
+                        title: '把疲憊全部吞下去，強打精神先陪 binbong 處理完失誤，再咬牙陪威宇衝刺最後一關，堅持不讓孩子在最後失望。',
+                        text: '硬撐到底滿足每個人，試圖憑一己之力扛下所有期望。',
+                        effects: { xiaoyu: -15, ajie: 10, xiaoqing: 15, dabao: 10, meimei: -10, cohesion: -5 },
+                        story: 'binbong 獲得即時安撫，威宇也玩得盡興，瓜哥看見你的努力很感動；但因為過度疲勞，你無意間露出的急躁與勉強笑容，讓敏感的 jellyfish 深深自責，米粒也覺得氣氛怪怪的。',
+                        note: '雖然滿足了當下最急迫的幾位學員，但違背了「不要用燃燒自己證明有愛心」的原則——情緒過載時的勉強陪伴，往往會讓高敏學員默默承擔愧疚感。'
+                    }
+                ]
+            }
+        ];
+
+        // ==================== STATE MANAGEMENT ====================
+        let gameState = {
+            currentRound: 0, // 0 = Start, 1..5 = Game, 6 = Result
+            students: [],
+            cohesion: 60,
+            history: [] // Record choices made
+        };
+
+        // Initialize / Reset
+        function initGame() {
+            gameState.currentRound = 0;
+            gameState.students = JSON.parse(JSON.stringify(initialStudents));
+            gameState.cohesion = 60;
+            gameState.history = [];
+            renderScreen();
+        }
+
+        // Helper to clamp scores 0-100
+        function clamp(val) {
+            return Math.max(0, Math.min(100, val));
+        }
+
+        // Status Bar Render
+        function renderStatusBar() {
+            const dashboard = document.getElementById('status-dashboard');
+            if (gameState.currentRound >= 1 && gameState.currentRound <= 5) {
+                dashboard.classList.remove('hidden');
+            } else {
+                dashboard.classList.add('hidden');
+                return;
+            }
+
+            // Update Cohesion
+            const cohesionEl = document.getElementById('cohesion-val');
+            cohesionEl.innerText = gameState.cohesion;
+
+            // Render Students Grid
+            const container = dashboard.querySelector('.grid');
+            container.innerHTML = gameState.students.map(s => {
+                let barColor = 'bg-emerald-500';
+                let textColor = 'text-emerald-700';
+                if (s.score < 40) {
+                    barColor = 'bg-red-500';
+                    textColor = 'text-red-600 font-bold';
+                } else if (s.score < 70) {
+                    barColor = 'bg-amber-400';
+                    textColor = 'text-amber-700';
+                }
+
+                return `
+                    <div onclick="openStudentModal('${s.id}')" class="bg-white p-2 sm:p-2.5 rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:border-camp-orange transition transform hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-base sm:text-lg">${s.avatar}</span>
+                            <span class="font-bold text-xs sm:text-sm text-camp-brown">${s.name}</span>
+                            <span class="text-xs ${textColor}">${s.score}</span>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div class="h-full ${barColor} bar-transition" style="width: ${s.score}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Modal Helpers
+        function openStudentModal(id) {
+            const s = gameState.students.find(item => item.id === id);
+            if (!s) return;
+
+            const modalBody = document.getElementById('student-modal-body');
+            modalBody.innerHTML = `
+                <div class="text-center mb-4">
+                    <span class="text-5xl mb-2 inline-block">${s.avatar}</span>
+                    <h3 class="text-xl font-bold text-camp-brown">${s.name} <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-normal">${s.tag}</span></h3>
+                </div>
+                <div class="space-y-3 text-sm">
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <p class="text-xs text-gray-500 font-bold mb-1">【性格簡介】</p>
+                        <p class="text-gray-700">${s.desc}</p>
+                    </div>
+                    <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                        <p class="text-xs text-emerald-800 font-bold mb-1">💚 核心需求：</p>
+                        <p class="text-emerald-900">${s.need}</p>
+                    </div>
+                    <div class="bg-rose-50 p-3 rounded-xl border border-rose-100">
+                        <p class="text-xs text-rose-800 font-bold mb-1">⚠️ 雷點禁忌：</p>
+                        <p class="text-rose-900">${s.mine}</p>
+                    </div>
+                    <div class="pt-2 text-center">
+                        <span class="text-xs font-bold text-gray-500">當前心態指數：</span>
+                        <span class="text-lg font-black text-camp-orange">${s.score} / 100</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('student-modal').classList.add('hidden');
+        }
+
+        function toggleRuleModal() {
+            const el = document.getElementById('rule-modal');
+            el.classList.toggle('hidden');
+        }
+
+        // ==================== SCREEN RENDERERS ====================
+        function renderScreen() {
+            renderStatusBar();
+            const container = document.getElementById('screen-container');
+
+            // 1. START SCREEN
+            if (gameState.currentRound === 0) {
+                container.innerHTML = `
+                    <div class="bg-camp-card rounded-3xl p-6 sm:p-8 card-shadow border-2 border-camp-brown max-w-3xl mx-auto my-4 text-center">
+                        <div class="inline-block bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                            ⛺ 營隊隊輔培訓模擬器
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-black text-camp-brown mb-3 tracking-tight">
+                            營隊隊輔生存戰：五人小隊的策略取捨
+                        </h2>
+                        <p class="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed max-w-xl mx-auto">
+                            身為營隊隊輔，你將帶領擁有不同性格與特質的 5 位太空人學員。在 5 輪真實帶隊事件中，你需要貫徹《隊輔心態建立》觀念，進行各種有捨有得的動態策略取捨！
+                        </p>
+
+                        <!-- Student Preview Cards -->
+                        <div class="mb-8">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">五位太空人學員檔案</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                                ${initialStudents.map(s => `
+                                    <div class="bg-white p-3 rounded-2xl border border-gray-200 text-center shadow-sm hover:border-camp-orange transition cursor-pointer" onclick="openStudentModal('${s.id}')">
+                                        <div class="text-3xl mb-1">${s.avatar}</div>
+                                        <div class="font-bold text-sm text-camp-brown">${s.name}</div>
+                                        <div class="text-[10px] bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 mt-1 inline-block">${s.tag}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <button onclick="startGame()" class="bg-camp-orange hover:bg-orange-600 text-white font-black text-lg px-8 py-3.5 rounded-2xl wood-border transform hover:-translate-y-1 transition duration-150 active:translate-y-0 shadow-lg">
+                            🚀 開始帶隊！進入第 1 輪
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // 2. EVENT SCREENS (Rounds 1 - 5)
+            if (gameState.currentRound >= 1 && gameState.currentRound <= 5) {
+                const event = gameEvents[gameState.currentRound - 1];
+                container.innerHTML = `
+                    <div class="bg-camp-card rounded-3xl p-5 sm:p-7 card-shadow border border-amber-900/10 max-w-3xl mx-auto animate-fade-in">
+                        <!-- Round Header -->
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-camp-green text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                                    第 ${event.round} / 5 輪
+                                </span>
+                                <span class="text-xs font-bold text-gray-500">${event.time}</span>
+                            </div>
+                            <!-- Mindset Badge -->
+                            <span class="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold px-3 py-1 rounded-full">
+                                ${event.mindsetTag}
+                            </span>
+                        </div>
+
+                        <!-- Event Description Card -->
+                        <div class="${event.bg} p-4 sm:p-5 rounded-2xl border border-gray-200/60 mb-5">
+                            <h3 class="text-base sm:text-lg font-bold text-camp-brown mb-2">${event.title}</h3>
+                            <p class="text-sm sm:text-base text-gray-800 leading-relaxed mb-4 font-medium">
+                                ${event.desc}
+                            </p>
+                            <!-- Reactions -->
+                            <div class="bg-white/80 backdrop-blur rounded-xl p-3 space-y-2 border border-gray-200/50">
+                                <p class="text-xs font-bold text-gray-500 mb-1">👀 現場學員反應提示：</p>
+                                ${event.reactions.map(r => `
+                                    <div class="text-xs sm:text-sm text-gray-700 flex items-start gap-2">
+                                        <span>${r.emoji}</span>
+                                        <span><strong class="text-camp-brown">${r.name}</strong>：${r.text}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Decision Options Title -->
+                        <div class="mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-compass text-camp-orange"></i>
+                            <h4 class="font-bold text-sm sm:text-base text-camp-brown">請選擇你的帶隊策略取捨：</h4>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="space-y-3">
+                            ${event.options.map((opt, idx) => `
+                                <button onclick="makeChoice(${idx})" class="w-full text-left bg-white hover:bg-amber-50/60 p-4 rounded-2xl border-2 border-gray-200 hover:border-camp-orange transition-all duration-200 group shadow-sm">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded group-hover:bg-camp-orange group-hover:text-white transition">
+                                            ${opt.tag}
+                                        </span>
+                                    </div>
+                                    <h5 class="font-bold text-sm sm:text-base text-camp-brown mb-1 group-hover:text-camp-orange transition">
+                                        ${opt.title}
+                                    </h5>
+                                    <p class="text-xs text-gray-500 leading-normal">
+                                        ${opt.text}
+                                    </p>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 3. FINAL SUMMARY RESULT SCREEN
+            if (gameState.currentRound === 6) {
+                renderResultScreen(container);
+            }
+        }
+
+        // ==================== GAME ACTIONS ====================
+        function startGame() {
+            gameState.currentRound = 1;
+            renderScreen();
+        }
+
+        function makeChoice(optionIndex) {
+            const event = gameEvents[gameState.currentRound - 1];
+            const selectedOpt = event.options[optionIndex];
+
+            // Apply updates
+            const oldScores = gameState.students.map(s => ({ id: s.id, score: s.score }));
+            const oldCohesion = gameState.cohesion;
+
+            // Update scores
+            gameState.students.forEach(s => {
+                if (selectedOpt.effects[s.id] !== undefined) {
+                    s.score = clamp(s.score + selectedOpt.effects[s.id]);
+                }
+            });
+            if (selectedOpt.effects.cohesion !== undefined) {
+                gameState.cohesion = clamp(gameState.cohesion + selectedOpt.effects.cohesion);
+            }
+
+            // Record History
+            gameState.history.push({
+                round: gameState.currentRound,
+                eventTitle: event.title,
+                mindsetTag: event.mindsetTag,
+                choiceTag: selectedOpt.tag,
+                choiceTitle: selectedOpt.title,
+                story: selectedOpt.story,
+                note: selectedOpt.note,
+                effects: selectedOpt.effects
+            });
+
+            // Show Round Feedback Screen
+            showRoundFeedbackScreen(selectedOpt, oldScores, oldCohesion);
+        }
+
+        function showRoundFeedbackScreen(opt, oldScores, oldCohesion) {
+            renderStatusBar();
+            const container = document.getElementById('screen-container');
+
+            // Compute diff tags for UI display
+            const diffHtml = gameState.students.map(s => {
+                const oldS = oldScores.find(item => item.id === s.id);
+                const diff = s.score - oldS.score;
+                let badge = `<span class="text-gray-400 font-bold">±0</span>`;
+                if (diff > 0) badge = `<span class="text-emerald-600 font-black">+${diff}</span>`;
+                if (diff < 0) badge = `<span class="text-rose-600 font-black">${diff}</span>`;
+
+                return `
+                    <div class="bg-white p-2 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
+                        <span>${s.avatar} ${s.name}</span>
+                        <div>${badge}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const cohesionDiff = gameState.cohesion - oldCohesion;
+            let cohesionBadge = `<span class="text-gray-400 font-bold">±0</span>`;
+            if (cohesionDiff > 0) cohesionBadge = `<span class="text-emerald-600 font-black">+${cohesionDiff}</span>`;
+            if (cohesionDiff < 0) cohesionBadge = `<span class="text-rose-600 font-black">${cohesionDiff}</span>`;
+
+            container.innerHTML = `
+                <div class="bg-camp-card rounded-3xl p-5 sm:p-7 card-shadow border border-amber-900/10 max-w-3xl mx-auto animate-fade-in">
+                    <div class="text-center mb-4">
+                        <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
+                            第 ${gameState.currentRound} 輪策略結果復盤
+                        </span>
+                        <h3 class="text-xl font-black text-camp-brown mt-2">${opt.title}</h3>
+                    </div>
+
+                    <!-- Story Outcome -->
+                    <div class="bg-amber-50/80 p-4 rounded-2xl border border-amber-200/70 mb-5">
+                        <h4 class="text-xs font-bold text-amber-900 mb-1 flex items-center gap-1">
+                            📖 現場狀況發展：
+                        </h4>
+                        <p class="text-sm text-gray-800 leading-relaxed">
+                            ${opt.story}
+                        </p>
+                    </div>
+
+                    <!-- Score Impacts Grid -->
+                    <div class="mb-5">
+                        <h4 class="text-xs font-bold text-gray-500 mb-2">📊 本輪數值變化（顯示有捨有得）：</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                            ${diffHtml}
+                            <div class="bg-amber-50 p-2 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+                                <span class="font-bold text-amber-900">🔥 團隊向心力</span>
+                                <div>${cohesionBadge}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Counselor Note -->
+                    <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 mb-6">
+                        <h4 class="text-xs font-bold text-emerald-900 mb-1 flex items-center gap-1">
+                            💡 隊輔復盤筆記（守住 vs 承擔）：
+                        </h4>
+                        <p class="text-sm text-emerald-800 leading-relaxed font-medium">
+                            ${opt.note}
+                        </p>
+                    </div>
+
+                    <!-- Next Button -->
+                    <div class="text-center">
+                        <button onclick="nextRound()" class="bg-camp-green hover:bg-emerald-800 text-white font-bold text-base px-8 py-3 rounded-xl wood-border transition transform hover:-translate-y-0.5">
+                            ${gameState.currentRound === 5 ? '🏁 完成所有挑戰，查看最終結算！' : '進入下一輪 ➔'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function nextRound() {
+            gameState.currentRound += 1;
+            renderScreen();
+        }
+
+        // ==================== FINAL RESULT CALCULATION & RENDER ====================
+        function renderResultScreen(container) {
+            // Calculation logic (Bucket theory)
+            const scores = gameState.students.map(s => s.score);
+            const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const minScore = Math.min(...scores);
+            const cohesion = gameState.cohesion;
+
+            // Formula: Avg 50%, Min 30%, Cohesion 20%
+            const totalScore = Math.round((avgScore * 0.5) + (minScore * 0.3) + (cohesion * 0.2));
+
+            // Title & Evaluation Threshold Logic
+            let title = '';
+            let subtitle = '';
+            let bgTheme = '';
+
+            if (totalScore >= 76) {
+                title = '🏆 傳奇平衡舵手';
+                subtitle = '在有限精力與資源下，精準拿捏每一輪的捨與得，守住底線又兼顧每位太空人！';
+                bgTheme = 'bg-emerald-50 border-emerald-300';
+            } else if (totalScore >= 69) {
+                title = '🌟 溫柔堅定引路人';
+                subtitle = '你牢記隊輔的心態定位，既守住界線也願意理解需求，讓這趟營隊成為孩子心中美好的種子！';
+                bgTheme = 'bg-blue-50 border-blue-300';
+            } else if (totalScore >= 62) {
+                title = '🔥 實戰應變隊輔';
+                subtitle = '你在取捨之間展現了行動力與熱忱，雖然難免顧此失彼，但整體仍帶領小隊安全度過挑戰！';
+                bgTheme = 'bg-amber-50 border-amber-300';
+            } else if (totalScore >= 54) {
+                title = '🧯 努力補位救火員';
+                subtitle = '面對各種兩難情境你忙得團團轉，有幾位太空人的需求稍微被忽略了，但這正是最寶貴的帶隊經驗！';
+                bgTheme = 'bg-orange-50 border-orange-300';
+            } else {
+                title = '🍃 初心試煉探索者';
+                subtitle = '帶隊本來就沒有標準答案，這次的挫折是最好的養分，試著重新調整取捨節奏再挑戰一次吧！';
+                bgTheme = 'bg-gray-50 border-gray-300';
+            }
+
+            container.innerHTML = `
+                <div class="bg-camp-card rounded-3xl p-5 sm:p-8 card-shadow border-2 border-camp-brown max-w-4xl mx-auto animate-fade-in">
+                    <!-- Title Banner -->
+                    <div class="text-center mb-6">
+                        <span class="text-xs font-bold bg-camp-orange text-white px-3 py-1 rounded-full uppercase tracking-wider">
+                            結算報告書
+                        </span>
+                        <h2 class="text-2xl sm:text-3xl font-black text-camp-brown mt-2">營隊策略帶隊評估結果</h2>
+                    </div>
+
+                    <!-- Final Score Dashboard Card -->
+                    <div class="${bgTheme} p-5 sm:p-6 rounded-3xl border-2 mb-8 text-center">
+                        <p class="text-xs font-bold text-gray-500 mb-1">你的綜合策略總分（木桶理論計算）</p>
+                        <div class="text-5xl sm:text-6xl font-black text-camp-brown mb-2 tracking-tight">
+                            ${totalScore} <span class="text-lg font-normal text-gray-500">/ 100</span>
+                        </div>
+                        <div class="inline-block bg-white text-camp-brown font-black px-4 py-1.5 rounded-full text-base sm:text-lg shadow-sm border border-gray-200 mb-3">
+                            ${title}
+                        </div>
+                        <p class="text-xs sm:text-sm text-gray-700 max-w-xl mx-auto leading-relaxed">
+                            ${subtitle}
+                        </p>
+
+                        <!-- Score Formula Breakdown -->
+                        <div class="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-black/10 text-center text-xs">
+                            <div>
+                                <span class="text-gray-500 block">5位太空人平均 (50%)</span>
+                                <span class="font-bold text-sm text-camp-brown">${Math.round(avgScore)} 分</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 block">最低分學員 (30%)</span>
+                                <span class="font-bold text-sm text-rose-600">${minScore} 分</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 block">團隊向心力 (20%)</span>
+                                <span class="font-bold text-sm text-amber-700">${cohesion} 分</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Student Final Feedback Cards -->
+                    <div class="mb-8">
+                        <h3 class="text-base font-bold text-camp-brown mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-comment-dots text-camp-orange"></i> 5 位太空人學員的營隊結業感言
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                            ${gameState.students.map(s => {
+                                let quote = '';
+                                let badgeColor = '';
+                                if (s.score >= 70) {
+                                    badgeColor = 'bg-emerald-100 text-emerald-800';
+                                    if (s.id === 'xiaoyu') quote = '「隊輔很有耐心，給我預告與安全感，我覺得這裡好安心！」';
+                                    if (s.id === 'ajie') quote = '「太爽了！隊輔給我好多任務展現體力，我是最強隊長！」';
+                                    if (s.id === 'xiaoqing') quote = '「隊輔很重視規則跟界線，讓人覺得很放心公正！」';
+                                    if (s.id === 'dabao') quote = '「謝謝隊輔沒有同情我看輕我，而是真正尊重我私底下的好處！」';
+                                    if (s.id === 'meimei') quote = '「我的點子通通都有發揮！大家都有聽我講話，超滿足！」';
+                                } else if (s.score >= 50) {
+                                    badgeColor = 'bg-amber-100 text-amber-800';
+                                    if (s.id === 'xiaoyu') quote = '「有時候環境有點突兀嘈雜，但隊輔還是很溫柔關心我。」';
+                                    if (s.id === 'ajie') quote = '「還算好玩，但有幾次被叫去坐好限制住，稍微有點無聊。」';
+                                    if (s.id === 'xiaoqing') quote = '「有些界線不太一致...但隊輔有努力在維護整體秩序。」';
+                                    if (s.id === 'dabao') quote = '「雖然偶爾有點被冷落，但最後還是感受到了陪伴的暖意。」';
+                                    if (s.id === 'meimei') quote = '「我的想法沒有全部被採用，但整體互動過程還是挺愉快的。」';
+                                } else {
+                                    badgeColor = 'bg-rose-100 text-rose-800';
+                                    if (s.id === 'xiaoyu') quote = '「環境變動太大太嘈雜了...我感到很害怕與自責...」';
+                                    if (s.id === 'ajie') quote = '「一直被限制不准動，沒地方施展體力，好悶喔！」';
+                                    if (s.id === 'xiaoqing') quote = '「標準雙標混亂...這讓我極度失落與無法接受。」';
+                                    if (s.id === 'dabao') quote = '「感覺被拿來比較或忽略了...心裡覺得有點失落。」';
+                                    if (s.id === 'meimei') quote = '「我覺得自己的發言被打壓了，沒什麼被認同的感覺...」';
+                                }
+
+                                return `
+                                    <div class="bg-white p-3 rounded-2xl border border-gray-200 flex flex-col justify-between shadow-sm">
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-xl">${s.avatar}</span>
+                                                <span class="text-xs font-bold px-1.5 py-0.5 rounded ${badgeColor}">${s.score}分</span>
+                                            </div>
+                                            <div class="font-bold text-xs text-camp-brown mb-1">${s.name}</div>
+                                            <p class="text-[11px] text-gray-600 leading-snug italic">
+                                                ${quote}
+                                            </p>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Choice History Review -->
+                    <div class="mb-8 bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200">
+                        <h3 class="text-sm font-bold text-camp-brown mb-3">📋 您的 5 輪心態取捨選擇歷程：</h3>
+                        <div class="space-y-2 text-xs">
+                            ${gameState.history.map(h => `
+                                <div class="bg-white p-2.5 rounded-xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-camp-green">第 ${h.round} 輪 [${h.eventTitle}]</span>
+                                        <span class="bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded text-[10px]">${h.mindsetTag}</span>
+                                    </div>
+                                    <span class="text-gray-600 font-medium">${h.choiceTag} ${h.choiceTitle}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Restart Game Button -->
+                    <div class="text-center">
+                        <button onclick="initGame()" class="bg-camp-orange hover:bg-orange-600 text-white font-black text-lg px-8 py-3 rounded-2xl wood-border transition transform hover:-translate-y-0.5">
+                            🔄 重新挑戰！嘗試不同帶隊取捨
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Start App
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
